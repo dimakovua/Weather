@@ -1,0 +1,33 @@
+build:
+  image: aoyako/boost_app:latest
+  stage: build
+  artifacts:
+    paths:
+      - $CI_PROJECT_DIR/Weather/build/Weather
+  script:
+    - cd Weather
+    - mkdir build && cd build
+    - cmake ..
+    - cmake --build .
+
+test:
+  image: aoyako/boost_app:latest
+  stage: test
+  dependencies:
+    - build
+  variables:
+    TESTSUITE: 'testsuite'
+    MOCKSERVER: 'mockserver'
+    WEATHER_BIN: 'Weather'
+    TOKEN_FILE: 'token.txt'
+  script:
+    - apk add git
+    - git clone https://gitlab.com/mykhailo.lohachov/ci_storage
+    - mkdir -p $CI_PROJECT_DIR/Weather/build/testing
+    - export TEST_DIR=$CI_PROJECT_DIR/Weather/build/testing && export PATH=$PATH:$TEST_DIR
+    - cd ci_storage && git checkout master && cp $TESTSUITE $TEST_DIR && cp $TOKEN_FILE $TEST_DIR && cp $MOCKSERVER $TEST_DIR
+    - cp $CI_PROJECT_DIR/Weather/build/$WEATHER_BIN $TEST_DIR
+    - cd $TEST_DIR
+    - chmod +x $TESTSUITE
+    - ./$MOCKSERVER &
+    - ./$TESTSUITE
